@@ -62,20 +62,16 @@ def discover_movies_by_actor(actor_id):
                 x= streamingservices(api_key, data['title_results'][0]['id'])
                 if x:
                     return beststreamingservices(x, region="US", tops=5)
-        return None
+    return []
 
 def main():
-    x = input("What would you like to search for? 1 = Actor, 2 = TV Show, 3 = Movie\n")
+    x = input("What would you like to search for? 1 = Actor, 2 = Movie\n")
     actor_id = None
     if x == "1":
         type_ = "person"
         search_value = input("Enter Actor Name: ")
         actor_id = find_actorID(search_value)
     elif x == "2":
-        type_ = "tv"
-        search_value = input("Enter TV Show Name: ")
-        return "TV Show search not implemented yet."
-    elif x == "3":
         type_ = "movie"
         search_value = input("Enter Movie Name: ")
     else:
@@ -87,29 +83,17 @@ def main():
         streamingFormat(movielist)
         quit()
     searchresults=search(api_key,search_value,type_)
-    print("\nSearch Results:")
+    #print("\nSearch Results:")
     #print(searchresults)
     if searchresults:
         sourceresults=streamingservices(api_key,searchresults['title_results'][0]['id'])
     else: sourceresults=[]
-    print("\nStreaming Services:")
-    print(sourceresults)
+    #print("\nStreaming Services:")
+    #print(sourceresults)
     topstreaming=beststreamingservices(sourceresults,region="US",tops=5)
     print("\nTop Streaming Services for you:")
-    for s in topstreaming:
-            name = s.get("name")
-            service_type = s.get("type")
-            fmt = s.get("format")
-            price = s.get("price")
-            url = s.get("web_url")
-            if service_type == "sub":
-                price_str = "included with subscription"
-            elif service_type == "free":
-                price_str = "free (ad-supported)"
-            else:
-                price_str = f"${price}" if price is not None else "unknown price"
-            print(f"- {name} | {service_type} | {fmt} | {price_str}")
-            print(f"  {url}\n")
+    print(streamingFormat(topstreaming))
+
 def streamingFormat(sources):
     for s in sources:
         if s.get("region") == "US":
