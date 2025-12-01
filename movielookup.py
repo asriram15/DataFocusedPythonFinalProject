@@ -14,12 +14,14 @@ def search(api_key,search_value,typef):
         'search_value': search_value,
         'types': typef
     }
+    base_url= 'https://api.watchmode.com/v1'
     url =f"{base_url}/search/?{urlencode(params)}"
     with urllib.request.urlopen(url) as response:
         data =json.loads(response.read().decode())
     return data
 
 def streamingservices(api_key, title_id):
+    base_url= 'https://api.watchmode.com/v1'
     #calls watchmode source api and returns a list of the streaming services
     params ={'apiKey': api_key}
     url =f"{base_url}/title/{title_id}/sources/?{urlencode(params)}"
@@ -28,54 +30,7 @@ def streamingservices(api_key, title_id):
     return data
 
 def beststreamingservices(sources, region="US", tops=5):
-    #gives the best 5 streaming services for said movie in US region
-    region_sources =[s for s in sources if s.get("region") == region]
-    if not region_sources:
-        return []
-    type_rank={
-        "sub": 0,   
-        "free": 1,
-        "rent": 2,
-        "buy": 3   
-    }
-    format_rank ={
-        "4K": 0,
-        "HD": 1,
-        "SD": 2
-    }
-    best_per_provider ={}
-    for s in region_sources:
-        name = s.get("name")
-        t = s.get("type")
-        fmt = s.get("format", "HD")  
-        price = s.get("price")
-
-       
-        norm_price =price if price is not None else 0.0
-
-        key =(name,t)  
-
-        sort_key = (
-            type_rank.get(t, 99),
-            norm_price,
-            format_rank.get(fmt, 99)
-        )
-
-        if key not in best_per_provider:
-            best_per_provider[key] = (sort_key, s)
-        else:
-            existing_key,fill= best_per_provider[key]
-            if sort_key < existing_key:
-                best_per_provider[key] = (sort_key, s)
-    best= [v[1] for v in best_per_provider.values()]
-    best.sort(
-        key=lambda s: (
-            type_rank.get(s.get("type"), 99),
-            (s.get("price") if s.get("price") is not None else 0.0),
-            format_rank.get(s.get("format", "HD"), 99)
-        )
-    )
-    return best[:tops]
+    return sources[:tops]
 
 
 def main():
@@ -97,7 +52,9 @@ def main():
     searchresults=search(api_key,search_value,type_)
     print("\nSearch Results:")
     print(searchresults)
-    sourceresults=streamingservices(api_key,searchresults['title_results'][0]['id'])
+    if searchresults:
+        sourceresults=streamingservices(api_key,searchresults['title_results'][0]['id'])
+    else: sourceresults=[]
     print("\nStreaming Services:")
     print(sourceresults)
     topstreaming=beststreamingservices(sourceresults,region="US",tops=5)
