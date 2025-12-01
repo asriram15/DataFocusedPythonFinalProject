@@ -1,0 +1,14 @@
+https://api.watchmode.com/docs 
+- Watchmode API, enables searching over large number of streaming services
+https://developer.themoviedb.org/docs/getting-started
+- TMDB API, used for Actor search
+https://github.com/celiao/tmdbsimple/
+- TMDBSimple, a Python wrapper class for TMDB API
+AI DISCLOSURE: 
+  We did use artificial intellegence on this project. 
+  USE CASES:
+    Parsing JSON output
+    Documentation
+    Bugfixing
+    Output Formatting
+All initial data imports and manipulation were done without the use of AI.
