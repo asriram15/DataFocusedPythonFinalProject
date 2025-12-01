@@ -4,8 +4,12 @@ from urllib.parse import urlencode
 import tmdbsimple as tmdb
 import pandas as pd
 
+# --- AI-assisted: GUI & link handling imports (ChatGPT) ---
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
+import webbrowser
+import re
+# --- end AI-assisted imports ---
 
 tmdb.API_KEY = '601ce0cebc45b9d950b35e1f9ed2458d'
 # Set your API key here
@@ -39,11 +43,13 @@ def streamingservices(api_key, title_id):
     return data
 
 
+# --- AI-assisted: region filtering & top-N selection logic (ChatGPT) ---
 def beststreamingservices(sources, region="US", tops=5):
     # filter by region first, then take the top N
     if region:
         sources = [s for s in sources if s.get("region") == region]
     return sources[:tops]
+# --- end AI-assisted section ---
 
 
 def find_actorID(actor_name):
@@ -57,7 +63,8 @@ def find_actorID(actor_name):
     return None
 
 
-def discover_movies_by_actor(actor_id, max_movies=5):   # 🔥 CHANGED 10 → 5
+# --- AI-assisted: mapping actor → movies → Watchmode IDs + sources (ChatGPT) ---
+def discover_movies_by_actor(actor_id, max_movies=5):
     """
     Use TMDb Discover to find movies for an actor, then map to Watchmode titles
     and get top US streaming sources for each. Returns a list of dicts:
@@ -75,10 +82,9 @@ def discover_movies_by_actor(actor_id, max_movies=5):   # 🔥 CHANGED 10 → 5
         if tmdb_movie_id is None:
             continue
 
-        search_field = "tmdb_movie_id"
         params = {
             'apiKey': api_key,
-            'search_field': search_field,
+            'search_field': "tmdb_movie_id",
             'search_value': tmdb_movie_id
         }
         url = f'{base_url}/search/?{urlencode(params)}'
@@ -110,6 +116,7 @@ def discover_movies_by_actor(actor_id, max_movies=5):   # 🔥 CHANGED 10 → 5
         })
 
     return movies_info
+# --- end AI-assisted section ---
 
 
 def streamingFormat(sources):
@@ -124,17 +131,20 @@ def streamingFormat(sources):
         fmt = s.get("format")
         price = s.get("price")
         url = s.get("web_url")
+
         if service_type == "sub":
             price_str = "included with subscription"
         elif service_type == "free":
             price_str = "free (ad-supported)"
         else:
             price_str = f"${price}" if price is not None else "unknown price"
+
         lines.append(f"  - {name} | {service_type} | {fmt} | {price_str}")
         lines.append(f"    {url}")
     return "\n".join(lines)
 
 
+# --- AI-assisted: formatting actor’s movies with streaming results (ChatGPT) ---
 def format_actor_movies(movies_info):
     # formats up to 5 movies and their streaming options
     if not movies_info:
@@ -144,12 +154,13 @@ def format_actor_movies(movies_info):
     for idx, movie in enumerate(movies_info, start=1):
         lines.append(f"{idx}. {movie['title']} ({movie['year']})")
         lines.append(streamingFormat(movie['sources']))
-        lines.append("")  # blank line between movies
+        lines.append("")
     return "\n".join(lines)
+# --- end AI-assisted section ---
 
 
-# ============ GUI-FRIENDLY WRAPPER ============
-
+# ============ GUI WRAPPER ============
+# --- AI-assisted: GUI-facing wrapper for search logic (ChatGPT) ---
 def build_result(choice, search_value):
     search_value = search_value.strip()
     if not search_value:
@@ -161,15 +172,14 @@ def build_result(choice, search_value):
             return f"No actor found for '{search_value}'.\n"
 
         header = [f"Actor: {search_value} (TMDb ID: {actor_id})", ""]
-        movies_info = discover_movies_by_actor(actor_id, max_movies=5)  # 🔥 updated
+        movies_info = discover_movies_by_actor(actor_id, max_movies=5)
         header.append("Top 5 movies and where to stream them:")
         header.append("")
         header.append(format_actor_movies(movies_info))
         return "\n".join(header)
 
     elif choice == "Movie":
-        type_ = "movie"
-        searchresults = search(api_key, search_value, type_)
+        searchresults = search(api_key, search_value, "movie")
 
         title_results = searchresults.get('title_results', [])
         if not title_results:
@@ -182,7 +192,7 @@ def build_result(choice, search_value):
 
         header = [f"Top match: {title_name} ({year})", ""]
 
-        sourceresults = streamingservices(api_key, title_id) if title_id is not None else []
+        sourceresults = streamingservices(api_key, title_id)
         if not sourceresults:
             header.append("No streaming sources found for this title.\n")
             return "\n".join(header)
@@ -193,19 +203,61 @@ def build_result(choice, search_value):
         header.append(streamingFormat(topstreaming))
         return "\n".join(header)
 
-    else:
-        return "Invalid choice.\n"
+    return "Invalid choice.\n"
+# --- end AI-assisted section ---
 
 
-# ======================= TKINTER GUI =======================
+# ============ CLICKABLE LINKS SUPPORT ============
+# --- AI-assisted: clickable link detection & behavior (ChatGPT) ---
+URL_REGEX = re.compile(r'https?://\S+')
 
+
+def insert_with_links(text_widget, text):
+    # Insert text into a Text/ScrolledText widget, tagging URLs as clickable links.
+    text_widget.delete("1.0", tk.END)
+    text_widget.link_spans = []
+
+    pos = 0
+    while True:
+        match = URL_REGEX.search(text, pos)
+        if not match:
+            text_widget.insert(tk.END, text[pos:])
+            break
+
+        start, end = match.start(), match.end()
+
+        # text before link
+        text_widget.insert(tk.END, text[pos:start])
+
+        url = match.group()
+        start_index = text_widget.index(tk.INSERT)
+        text_widget.insert(tk.END, url, ("link",))
+        end_index = text_widget.index(tk.INSERT)
+
+        text_widget.link_spans.append((start_index, end_index, url))
+        pos = end
+
+
+def on_link_click(event):
+    # Handle clicks on tagged links and open them in the default browser.
+    widget = event.widget
+    index = widget.index("@%d,%d" % (event.x, event.y))
+
+    for start, end, url in getattr(widget, "link_spans", []):
+        if widget.compare(start, "<=", index) and widget.compare(index, "<", end):
+            webbrowser.open(url)
+            break
+# --- end AI-assisted section ---
+
+
+# ======================= GUI =======================
+# --- AI-assisted: Tkinter UI for search & results (ChatGPT) ---
 def on_search_click():
     choice = type_var.get()
     query = title_entry.get()
     try:
-        result_text = build_result(choice, query)
-        results_box.delete("1.0", tk.END)
-        results_box.insert(tk.END, result_text)
+        result = build_result(choice, query)
+        insert_with_links(results_box, result)
     except Exception as e:
         messagebox.showerror("Error", f"Something went wrong:\n{e}")
 
@@ -219,7 +271,7 @@ def gui_main():
     top = ttk.Frame(root, padding=10)
     top.pack(fill="x")
 
-    ttk.Label(top, text="Search type:").grid(row=0, column=0, sticky="w")
+    ttk.Label(top, text="Search type:").grid(row=0, column=0)
 
     type_var = tk.StringVar(value="Movie")
     type_menu = ttk.Combobox(
@@ -227,56 +279,52 @@ def gui_main():
         textvariable=type_var,
         values=["Actor", "Movie"],
         state="readonly",
-        width=10,
+        width=10
     )
-    type_menu.grid(row=0, column=1, padx=5, pady=5)
+    type_menu.grid(row=0, column=1, padx=5)
 
     ttk.Label(top, text="Name / Title:").grid(row=0, column=2, padx=(15, 0))
 
     title_entry = ttk.Entry(top, width=40)
-    title_entry.grid(row=0, column=3, padx=5, pady=5)
+    title_entry.grid(row=0, column=3, padx=5)
 
-    search_btn = ttk.Button(top, text="Search", command=on_search_click)
-    search_btn.grid(row=0, column=4, padx=10)
+    ttk.Button(top, text="Search", command=on_search_click).grid(row=0, column=4, padx=10)
 
     results_box = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=90, height=25)
     results_box.pack(padx=10, pady=(0, 10), fill="both", expand=True)
 
+    # Softer readable link color (AI-suggested)
+    results_box.tag_config("link", foreground="#1E88E5", underline=1)
+
+    results_box.bind("<Button-1>", on_link_click)
+
     root.mainloop()
+# --- end AI-assisted GUI section ---
 
 
-# ==================== ORIGINAL CLI MAIN (KEPT) ====================
-
+# ============ CLI MAIN (your original-style interface, shortened) ============
+# --- AI-assisted: condensed CLI wrapper using existing functions (ChatGPT) ---
 def main():
     x = input("What would you like to search for? 1 = Actor, 2 = Movie\n")
     actor_id = None
     if x == "1":
-        type_ = "person"
         search_value = input("Enter Actor Name: ")
         actor_id = find_actorID(search_value)
+        if actor_id:
+            print(format_actor_movies(discover_movies_by_actor(actor_id, 5)))
+            return
     elif x == "2":
-        type_ = "movie"
         search_value = input("Enter Movie Name: ")
     else:
         print("Invalid choice.")
         return
 
-    if actor_id:
-        print(f"Actor ID for {search_value} is {actor_id}")
-        movies_info = discover_movies_by_actor(actor_id, max_movies=5)  # 🔥 updated
-        print(format_actor_movies(movies_info))
-        quit()
-
-    searchresults=search(api_key,search_value,type_)
-    if searchresults:
-        sourceresults=streamingservices(api_key,searchresults['title_results'][0]['id'])
-    else:
-        sourceresults=[]
-
-    topstreaming=beststreamingservices(sourceresults,region="US",tops=5)
-    print("\nTop Streaming Services for you:")
-    print(streamingFormat(topstreaming))
+    searchresults = search(api_key, search_value, "movie")
+    sourceresults = streamingservices(api_key, searchresults['title_results'][0]['id'])
+    print(streamingFormat(beststreamingservices(sourceresults)))
+# --- end AI-assisted CLI wrapper ---
 
 
 if __name__ == "__main__":
+    # AI-assisted: default to GUI for better UX (ChatGPT)
     gui_main()
