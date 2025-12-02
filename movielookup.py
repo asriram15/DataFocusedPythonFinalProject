@@ -3,6 +3,7 @@ import json
 from urllib.parse import urlencode
 import tmdbsimple as tmdb
 import pandas as pd
+import numpy as np # Added for robust DataFrame handling
 
 # --- AI-assisted: GUI & link handling imports (ChatGPT) ---
 import tkinter as tk
@@ -15,40 +16,53 @@ tmdb.API_KEY = '601ce0cebc45b9d950b35e1f9ed2458d'
 # Set your API key here
 
 api_key = 'sg9LQTjvvNGPPEk6TGchFr1iQ2zuDKELbhunvY4I'
-base_url= 'https://api.watchmode.com/v1'
+base_url = 'https://api.watchmode.com/v1'
 
 
-def search(api_key,search_value,typef):
-    #calls watchmode search api and returns results in a json format dictionary
-    params ={
+def search(api_key, search_value, typef):
+    # calls watchmode search api and returns results as a DataFrame
+    params = {
         'apiKey': api_key,
         'search_field': "name",
         'search_value': search_value,
         'types': typef
     }
-    base_url= 'https://api.watchmode.com/v1'
-    url =f"{base_url}/search/?{urlencode(params)}"
+    base_url = 'https://api.watchmode.com/v1'
+    url = f"{base_url}/search/?{urlencode(params)}"
     with urllib.request.urlopen(url) as response:
-        data =json.loads(response.read().decode())
-    return data
+        data = json.loads(response.read().decode())
+    
+    # Return as DataFrame
+    title_results = data.get('title_results', [])
+    if title_results:
+        return pd.DataFrame(title_results)
+    return pd.DataFrame()
 
 
 def streamingservices(api_key, title_id):
-    base_url= 'https://api.watchmode.com/v1'
-    #calls watchmode source api and returns a list of the streaming services
-    params ={'apiKey': api_key}
-    url =f"{base_url}/title/{title_id}/sources/?{urlencode(params)}"
+    base_url = 'https://api.watchmode.com/v1'
+    # calls watchmode source api and returns streaming services as a DataFrame
+    params = {'apiKey': api_key}
+    url = f"{base_url}/title/{title_id}/sources/?{urlencode(params)}"
     with urllib.request.urlopen(url) as response:
-        data =json.loads(response.read().decode())
-    return data
+        data = json.loads(response.read().decode())
+    
+    # Return as DataFrame
+    if data:
+        return pd.DataFrame(data)
+    return pd.DataFrame()
 
 
 # --- AI-assisted: region filtering & top-N selection logic (ChatGPT) ---
-def beststreamingservices(sources, region="US", tops=5):
-    # filter by region first, then take the top N
+def beststreamingservices(sources_df: pd.DataFrame, region="US", tops=5) -> pd.DataFrame:
+    # filter by region first, then take the top N rows of the DataFrame
+    if sources_df.empty:
+        return sources_df
+    
     if region:
-        sources = [s for s in sources if s.get("region") == region]
-    return sources[:tops]
+        sources_df = sources_df[sources_df['region'] == region]
+        
+    return sources_df.head(tops) # return a slice/copy of the DataFrame
 # --- end AI-assisted section ---
 
 
@@ -64,16 +78,19 @@ def find_actorID(actor_name):
 
 
 # --- AI-assisted: mapping actor → movies → Watchmode IDs + sources (ChatGPT) ---
-def discover_movies_by_actor(actor_id, max_movies=5):
+def discover_movies_by_actor(actor_id, max_movies=5) -> pd.DataFrame:
     """
     Use TMDb Discover to find movies for an actor, then map to Watchmode titles
-    and get top US streaming sources for each. Returns a list of dicts:
-    { 'title': ..., 'year': ..., 'sources': [...] }
+    and get top US streaming sources for each. Returns a DataFrame.
     """
     discover = tmdb.Discover()
     response = discover.movie(with_people=actor_id, sort_by='popularity.desc')
 
     movies_info = []
+    
+    # Use a set to prevent duplicate movie entries, though popularity sort helps
+    seen_watchmode_ids = set() 
+
     for movie in response.get('results', []):
         if len(movies_info) >= max_movies:
             break
@@ -82,6 +99,7 @@ def discover_movies_by_actor(actor_id, max_movies=5):
         if tmdb_movie_id is None:
             continue
 
+        # 1. Search Watchmode by TMDb ID
         params = {
             'apiKey': api_key,
             'search_field': "tmdb_movie_id",
@@ -96,14 +114,18 @@ def discover_movies_by_actor(actor_id, max_movies=5):
             continue
 
         watchmode_id = title_results[0].get('id')
-        if watchmode_id is None:
+        if watchmode_id is None or watchmode_id in seen_watchmode_ids:
+            continue
+            
+        seen_watchmode_ids.add(watchmode_id)
+
+        # 2. Get Streaming Sources
+        sources_df = streamingservices(api_key, watchmode_id)
+        if sources_df.empty:
             continue
 
-        sources = streamingservices(api_key, watchmode_id)
-        if not sources:
-            continue
-
-        top_sources = beststreamingservices(sources, region="US", tops=5)
+        # 3. Get Top Sources
+        top_sources_df = beststreamingservices(sources_df, region="US", tops=5)
 
         movie_title = movie.get('title', 'Unknown title')
         release_date = movie.get('release_date') or ''
@@ -112,20 +134,23 @@ def discover_movies_by_actor(actor_id, max_movies=5):
         movies_info.append({
             'title': movie_title,
             'year': year,
-            'sources': top_sources
+            # Store the top sources DataFrame directly in the cell
+            'sources_df': top_sources_df 
         })
 
-    return movies_info
+    return pd.DataFrame(movies_info)
 # --- end AI-assisted section ---
 
 
-def streamingFormat(sources):
-    # returns a formatted string of streaming options
-    if not sources:
+def streamingFormat(sources_df: pd.DataFrame):
+    # returns a formatted string of streaming options from a DataFrame
+    if sources_df.empty:
         return "  No streaming options found.\n"
 
     lines = []
-    for s in sources:
+    
+    # Iterate over DataFrame rows (a clean way to handle records)
+    for index, s in sources_df.iterrows():
         name = s.get("name")
         service_type = s.get("type")
         fmt = s.get("format")
@@ -141,20 +166,25 @@ def streamingFormat(sources):
 
         lines.append(f"  - {name} | {service_type} | {fmt} | {price_str}")
         lines.append(f"    {url}")
+        
     return "\n".join(lines)
 
 
 # --- AI-assisted: formatting actor’s movies with streaming results (ChatGPT) ---
-def format_actor_movies(movies_info):
-    # formats up to 5 movies and their streaming options
-    if not movies_info:
+def format_actor_movies(movies_df: pd.DataFrame):
+    # formats up to 5 movies and their streaming options from a DataFrame
+    if movies_df.empty:
         return "No streaming sources found for this actor's movies.\n"
 
     lines = []
-    for idx, movie in enumerate(movies_info, start=1):
-        lines.append(f"{idx}. {movie['title']} ({movie['year']})")
-        lines.append(streamingFormat(movie['sources']))
+    # Iterate over the rows of the movies DataFrame
+    for idx, movie in movies_df.iterrows():
+        # idx is 0-based, so add 1 for display
+        lines.append(f"{idx+1}. {movie['title']} ({movie['year']})") 
+        # Pass the nested sources DataFrame to the formatter
+        lines.append(streamingFormat(movie['sources_df'])) 
         lines.append("")
+        
     return "\n".join(lines)
 # --- end AI-assisted section ---
 
@@ -172,35 +202,40 @@ def build_result(choice, search_value):
             return f"No actor found for '{search_value}'.\n"
 
         header = [f"Actor: {search_value} (TMDb ID: {actor_id})", ""]
-        movies_info = discover_movies_by_actor(actor_id, max_movies=5)
+        # discover_movies_by_actor returns a DataFrame
+        movies_df = discover_movies_by_actor(actor_id, max_movies=5) 
         header.append("Top 5 movies and where to stream them:")
         header.append("")
-        header.append(format_actor_movies(movies_info))
+        # format_actor_movies accepts a DataFrame
+        header.append(format_actor_movies(movies_df)) 
         return "\n".join(header)
 
     elif choice == "Movie":
-        searchresults = search(api_key, search_value, "movie")
+        # search returns a DataFrame
+        searchresults_df = search(api_key, search_value, "movie") 
 
-        title_results = searchresults.get('title_results', [])
-        if not title_results:
+        if searchresults_df.empty:
             return f"No movie found matching '{search_value}'.\n"
 
-        first = title_results[0]
+        # Access first result
+        first = searchresults_df.iloc[0]
         title_id = first.get('id')
         title_name = first.get('name', 'Unknown title')
         year = first.get('year', 'N/A')
 
         header = [f"Top match: {title_name} ({year})", ""]
 
-        sourceresults = streamingservices(api_key, title_id)
-        if not sourceresults:
+        # streamingservices returns a DataFrame
+        sourceresults_df = streamingservices(api_key, title_id) 
+        if sourceresults_df.empty:
             header.append("No streaming sources found for this title.\n")
             return "\n".join(header)
 
-        topstreaming = beststreamingservices(sourceresults, region="US", tops=5)
+        topstreaming_df = beststreamingservices(sourceresults_df, region="US", tops=5) 
         header.append("Top Streaming Services for you:")
         header.append("")
-        header.append(streamingFormat(topstreaming))
+        # streamingFormat accepts a DataFrame
+        header.append(streamingFormat(topstreaming_df)) 
         return "\n".join(header)
 
     return "Invalid choice.\n"
@@ -311,7 +346,8 @@ def main():
         search_value = input("Enter Actor Name: ")
         actor_id = find_actorID(search_value)
         if actor_id:
-            print(format_actor_movies(discover_movies_by_actor(actor_id, 5)))
+            # Passes DataFrame
+            print(format_actor_movies(discover_movies_by_actor(actor_id, 5))) 
             return
     elif x == "2":
         search_value = input("Enter Movie Name: ")
@@ -319,9 +355,24 @@ def main():
         print("Invalid choice.")
         return
 
-    searchresults = search(api_key, search_value, "movie")
-    sourceresults = streamingservices(api_key, searchresults['title_results'][0]['id'])
-    print(streamingFormat(beststreamingservices(sourceresults)))
+    # Search returns DataFrame
+    searchresults_df = search(api_key, search_value, "movie") 
+    
+    if searchresults_df.empty:
+        print(f"No movie found matching '{search_value}'.")
+        return
+
+    # Access ID from DataFrame
+    first_id = searchresults_df.iloc[0]['id'] 
+    
+    # Streamingservices returns DataFrame
+    sourceresults_df = streamingservices(api_key, first_id) 
+    
+    # Process DataFrames
+    top_sources_df = beststreamingservices(sourceresults_df) 
+    
+    # Format from DataFrame
+    print(streamingFormat(top_sources_df)) 
 # --- end AI-assisted CLI wrapper ---
 
 
