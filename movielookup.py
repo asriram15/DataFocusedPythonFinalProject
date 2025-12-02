@@ -60,7 +60,7 @@ def beststreamingservices(sources_df: pd.DataFrame, region="US", tops=5) -> pd.D
     
     if region:
         sources_df = sources_df[sources_df['region'] == region]
-        
+    sources_df = sources_df.sort_values(by='price')
     return sources_df.head(tops) # return a slice/copy of the DataFrame
 # --- end AI-assisted section ---
 
