@@ -3,7 +3,6 @@ import json
 from urllib.parse import urlencode
 import tmdbsimple as tmdb
 import pandas as pd
-import numpy as np # Added for robust DataFrame handling
 
 # --- AI-assisted: GUI & link handling imports (ChatGPT) ---
 import tkinter as tk
