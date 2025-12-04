@@ -1,0 +1,218 @@
+[
+    {
+        "country": "US",
+        "name": "USA"
+    },
+    {
+        "country": "CA",
+        "name": "Canada"
+    },
+    {
+        "country": "GB",
+        "name": "Great Britain"
+    },
+    {
+        "country": "AU",
+        "name": "Australia"
+    },
+    {
+        "country": "BR",
+        "name": "Brazil"
+    },
+    {
+        "country": "ES",
+        "name": "Spain"
+    },
+    {
+        "country": "IN",
+        "name": "India"
+    },
+    {
+        "country": "AE",
+        "name": "United Arab Emirates"
+    },
+    {
+        "country": "AT",
+        "name": "Austria"
+    },
+    {
+        "country": "IT",
+        "name": "Italy"
+    },
+    {
+        "country": "AR",
+        "name": "Argentina"
+    },
+    {
+        "country": "BE",
+        "name": "Belgium"
+    },
+    {
+        "country": "BG",
+        "name": "Bulgaria"
+    },
+    {
+        "country": "CL",
+        "name": "Chile"
+    },
+    {
+        "country": "CO",
+        "name": "Colombia"
+    },
+    {
+        "country": "HR",
+        "name": "Croatia"
+    },
+    {
+        "country": "CZ",
+        "name": "Czech Republic"
+    },
+    {
+        "country": "DK",
+        "name": "Denmark"
+    },
+    {
+        "country": "EC",
+        "name": "Ecuador"
+    },
+    {
+        "country": "EE",
+        "name": "Estonia"
+    },
+    {
+        "country": "FI",
+        "name": "Finland"
+    },
+    {
+        "country": "FR",
+        "name": "France"
+    },
+    {
+        "country": "DE",
+        "name": "Germany"
+    },
+    {
+        "country": "GR",
+        "name": "Greece"
+    },
+    {
+        "country": "HK",
+        "name": "Hong Kong"
+    },
+    {
+        "country": "HU",
+        "name": "Hungary"
+    },
+    {
+        "country": "IS",
+        "name": "Iceland"
+    },
+    {
+        "country": "ID",
+        "name": "Indonesia"
+    },
+    {
+        "country": "IE",
+        "name": "Ireland"
+    },
+    {
+        "country": "IL",
+        "name": "Israel"
+    },
+    {
+        "country": "JP",
+        "name": "Japan"
+    },
+    {
+        "country": "LT",
+        "name": "Lithuania"
+    },
+    {
+        "country": "MY",
+        "name": "Malaysia"
+    },
+    {
+        "country": "MX",
+        "name": "Mexico"
+    },
+    {
+        "country": "NL",
+        "name": "Netherlands"
+    },
+    {
+        "country": "NZ",
+        "name": "New Zealand"
+    },
+    {
+        "country": "NO",
+        "name": "Norway"
+    },
+    {
+        "country": "PA",
+        "name": "Panama"
+    },
+    {
+        "country": "PE",
+        "name": "Peru"
+    },
+    {
+        "country": "PH",
+        "name": "Philippines"
+    },
+    {
+        "country": "PL",
+        "name": "Poland"
+    },
+    {
+        "country": "PT",
+        "name": "Portugal"
+    },
+    {
+        "country": "RO",
+        "name": "Romania"
+    },
+    {
+        "country": "RU",
+        "name": "Russia"
+    },
+    {
+        "country": "RS",
+        "name": "Serbia"
+    },
+    {
+        "country": "SG",
+        "name": "Singapore"
+    },
+    {
+        "country": "ZA",
+        "name": "South Africa"
+    },
+    {
+        "country": "KR",
+        "name": "South Korea"
+    },
+    {
+        "country": "SE",
+        "name": "Sweden"
+    },
+    {
+        "country": "CH",
+        "name": "Switzerland"
+    },
+    {
+        "country": "TH",
+        "name": "Thailand"
+    },
+    {
+        "country": "TR",
+        "name": "Turkey"
+    },
+    {
+        "country": "UA",
+        "name": "Ukraine"
+    },
+    {
+        "country": "VN",
+        "name": "Vietnam"
+    }
+]
